@@ -1,7 +1,31 @@
 import axios from "axios";
+import dotenv from 'dotenv';
 
-const windowSize = 10;
-let windowState = [];
+dotenv.config();
+
+const WINDOW_SIZE = 10;
+let numberWindow = [];
+
+const BASE_URL = process.env.BASE_URL
+const AUTH_URL = process.env.AUTH_URL
+
+let accessToken = process.env.ACCESS_TOKEN; 
+
+const credentials = {
+    companyName: "goMart",
+    clientID: "a725c58e-52d4-4a06-a647-de7ec768f7ce",
+    clientSecret: "hNNyAoWTXVlClGzZ",
+    ownerName: "Nithinbharathi.T",
+    ownerEmail: "nithinthelordest@gmail.com",
+    rollNo: "713522CS101"
+};
+
+const TYPE_MAPPING = {
+  p: "prime",
+  f: "fibo",
+  e: "even",
+  r: "rand",
+};
 
 const generateNumbersLocally = (type) => {
   switch (type) {
@@ -48,10 +72,41 @@ const generateRandomNumbers = (count) => {
   return Array.from({ length: count }, () => Math.floor(Math.random() * 100));
 };
 
-const fetchNumbersFromAPI = async (type) => {
+const getAccessToken = async () => {
   try {
-    return response.data.numbers || [];
+    const response = await axios.post(AUTH_URL, credentials);
+    accessToken = response.data.access_token;
+    console.log("Access token obtained:", accessToken);
   } catch (error) {
+    console.error("Error obtaining access token:", error.message);
+    accessToken = null;
+  }
+};
+
+const fetchNumbersFromServer = async (type) => {
+  if (!accessToken) {
+    await getAccessToken();
+    if (!accessToken) return generateNumbersLocally(type);
+  }
+
+  try {
+    const response = await axios.get(`${BASE_URL}/${type}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      timeout: 5000,
+    });
+
+    if (!response.data || !Array.isArray(response.data.numbers)) {
+      throw new Error("Invalid response from API");
+    }
+
+    return response.data.numbers;
+  } catch (error) {
+    if (error.response && error.response.status === 401) {
+      console.log("Access token expired, refreshing token...");
+      await getAccessToken();
+      return fetchNumbersFromServer(type);
+    }
+
     console.error(`Error fetching ${type} numbers, using local fallback:`, error.message);
     return generateNumbersLocally(type);
   }
@@ -59,41 +114,36 @@ const fetchNumbersFromAPI = async (type) => {
 
 export const fetchNumbers = async (req, res) => {
   const { numberid } = req.params;
-  let apiType;
+  const type = TYPE_MAPPING[numberid];
 
-  switch (numberid) {
-    case "p":
-      apiType = "prime";
-      break;
-    case "f":
-      apiType = "fibo";
-      break;
-    case "e":
-      apiType = "even";
-      break;
-    case "r":
-      apiType = "rand";
-      break;
-    default:
-      return res.status(400).json({ error: "Invalid number type" });
+  if (!type) {
+    return res.status(400).json({ error: "Invalid number type" });
   }
 
-  const newNumbers = await fetchNumbersFromAPI(apiType);
+  console.log(`Received request for type: ${type}`);
 
-  const prevState = [...windowState];
+  const prevState = [...numberWindow];
 
-  windowState = [...new Set([...windowState, ...newNumbers])];
 
-  if (windowState.length > windowSize) {
-    windowState = windowState.slice(windowState.length - windowSize);
-  }
+  let newNumbers = await fetchNumbersFromServer(type);
 
-  const avg = windowState.reduce((a, b) => a + b, 0) / windowState.length;
 
-  return res.json({
+  newNumbers = newNumbers.filter((num) => !numberWindow.includes(num));
+
+
+  numberWindow.push(...newNumbers);
+  numberWindow = numberWindow.slice(-WINDOW_SIZE);
+
+
+  const avg =
+    numberWindow.length > 0
+      ? (numberWindow.reduce((sum, num) => sum + num, 0) / numberWindow.length).toFixed(2)
+      : "N/A";
+
+  res.json({
     windowPrevState: prevState,
-    windowCurrState: windowState,
+    windowCurrState: numberWindow,
     numbers: newNumbers,
-    avg: avg.toFixed(2),
+    avg,
   });
 };
