@@ -6,8 +6,8 @@ dotenv.config();
 const WINDOW_SIZE = 10;
 let numberWindow = [];
 
-const BASE_URL = process.env.BASE_URL
-const AUTH_URL = process.env.AUTH_URL
+const BASE_URL = process.env.BASE_URL;
+const AUTH_URL = process.env.AUTH_URL;
 
 let accessToken = process.env.ACCESS_TOKEN; 
 
