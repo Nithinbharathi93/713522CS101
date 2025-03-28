@@ -2,8 +2,8 @@
 
 ## Project 1
 
-It is a calc microservice
-It works wrt the window size
+- It is a calc microservice
+- It works wrt the window size
 
 --- 
 
