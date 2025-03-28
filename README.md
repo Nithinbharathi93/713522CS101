@@ -14,7 +14,7 @@
 
 ---
 
-## use this code..
+## use this commadn..
 
 ```
 cd backend
