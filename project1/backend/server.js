@@ -1,14 +1,12 @@
-import express from 'express';
-// import axios from 'axois';
-import dotenv from 'dotenv';
-import cors from 'cors';
-
-dotenv.config();
-
-const PORT = process.env.PORT;
+import express from "express";
+import { router } from "./routes/calcRoutes.js";
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+const PORT = 5234;
 
-app.listen(PORT, () => console.log(`Server running ar http://localhost:${PORT}`))
+app.use(express.json());
+app.use("/numbers", router);
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
