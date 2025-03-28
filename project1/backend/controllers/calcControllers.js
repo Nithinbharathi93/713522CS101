@@ -1,69 +1,62 @@
+import axios from "axios";
+
 const windowSize = 10;
 let windowState = [];
 
-const generatePrimes = (count) => {
-  let primes = [];
-  let num = 2;
-  while (primes.length < count) {
-    if (primes.every(p => num % p !== 0)) {
-      primes.push(num);
-    }
-    num++;
+// Function to fetch numbers from external API
+const fetchNumbersFromAPI = async (type) => {
+  try {
+    const response = await axios.get(`http://20.244.56.144/test/${type}`);
+    return response.data.numbers; // Assuming the API returns { numbers: [...] }
+  } catch (error) {
+    console.error(`Error fetching ${type} numbers:`, error);
+    return [];
   }
-  return primes;
 };
 
-const generateFibonacci = (count) => {
-  let fib = [0, 1];
-  for (let i = 2; i < count; i++) {
-    fib.push(fib[i - 1] + fib[i - 2]);
-  }
-  return fib;
-};
-
-const generateEvenNumbers = (count) => {
-  return Array.from({ length: count }, (_, i) => (i + 1) * 2);
-};
-
-const generateRandomNumbers = (count) => {
-  return Array.from({ length: count }, () => Math.floor(Math.random() * 100) + 1);
-};
-
-export const fetchNumbers = (req, res) => {
+// Function to fetch numbers and update the window
+export const fetchNumbers = async (req, res) => {
   const { numberid } = req.params;
-  let newNumbers = [];
+  let apiType;
 
   switch (numberid) {
     case "p":
-      newNumbers = generatePrimes(10);
+      apiType = "prime";
       break;
     case "f":
-      newNumbers = generateFibonacci(10);
+      apiType = "fibo";
       break;
     case "e":
-      newNumbers = generateEvenNumbers(10);
+      apiType = "even";
       break;
     case "r":
-      newNumbers = generateRandomNumbers(10);
+      apiType = "rand";
       break;
     default:
       return res.status(400).json({ error: "Invalid number type" });
   }
 
+  // Fetch numbers from external API
+  const newNumbers = await fetchNumbersFromAPI(apiType);
+
+  // Store previous state before update
   const prevState = [...windowState];
 
+  // Add new numbers and maintain uniqueness
   windowState = [...new Set([...windowState, ...newNumbers])];
 
+  // Ensure sliding window size
   if (windowState.length > windowSize) {
     windowState = windowState.slice(windowState.length - windowSize);
   }
 
+  // Calculate the average
   const avg = windowState.reduce((a, b) => a + b, 0) / windowState.length;
 
   return res.json({
     windowPrevState: prevState,
     windowCurrState: windowState,
     numbers: newNumbers,
-    avg: avg.toFixed(2)
+    avg: avg.toFixed(2),
   });
 };
